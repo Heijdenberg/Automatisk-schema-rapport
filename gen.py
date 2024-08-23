@@ -1,17 +1,12 @@
 import openpyxl
 from datetime import datetime, timedelta
 
-schema = openpyxl.load_workbook('Schema.xlsx')
-mall = openpyxl.load_workbook('mall.xlsx')
-
-sheet_names = [sheet for sheet in schema.sheetnames if schema[sheet].sheet_state == 'visible']
-
-def setAvd():
+def setAvd(sheet_names):
     for i in range(0,len(sheet_names)):
         print(i,' ',sheet_names[i])
     return sheet_names[int(input('Vilken avdlening: '))]
 
-def setKollega():
+def setKollega(schemaTab):
     kollegor = []
     for i in range(1, 200):
         cell = 'B'+str(i)
@@ -21,31 +16,11 @@ def setKollega():
         print(str(i)+' '+kollegor[i])
     return kollegor[int(input('Vilken kollega: '))]
 
-tabName = setAvd()
-schemaTab = schema[tabName]
-namn = setKollega()
-startdatum = input('Periodens start datum (xxxx-xx-xx): ')
-numVeckor = input('Hur många veckor i perioden: ')
-rast = input('Hur lång rast (Minuter): ')
-numDagar = int(numVeckor)*7
-mallTab = mall['Schema mall']
-
-startPosSchema = ''
-
-for x in range(1,200):
-    cell = 'B'+str(x)
-    val = schemaTab[cell].value
-    if val == namn:
-        startPosSchema = str(x)
-        break
-
-mallTab['C8'] = int(numVeckor)
-
-def setCellValue(letter, num):
+def setCellValue(schemaTab,letter, num):
     value = str(schemaTab[letter+str(num)].value.hour)+','+str(schemaTab[letter+str(num)].value.minute)
     return value
-    
-def setRowValues(letters):
+
+def setRowValues(schemaTab, rowSchema, mallTab, rowMall, rast, letters):
     startLetter = letters[0]
     endLetter = letters[1]
     egenPlanStart = letters[2]
@@ -75,41 +50,67 @@ def setRowValues(letters):
                 rasten = str(int(rasten) + rastDiff_in_minutes)
             endLetter = moteSlut
 
-    mallTab['C'+str(rowMall)] = setCellValue(startLetter, rowSchema)
-    mallTab['D'+str(rowMall)] = setCellValue(endLetter, rowSchema)
+    mallTab['C'+str(rowMall)] = setCellValue(schemaTab, startLetter, rowSchema)
+    mallTab['D'+str(rowMall)] = setCellValue(schemaTab, endLetter, rowSchema)
     mallTab['E'+str(rowMall)] = rasten
 
-i = 0
-rowSchema = int(startPosSchema)
-rowMall = 14
+def main():
+    schema = openpyxl.load_workbook('Schema.xlsx')
+    mall = openpyxl.load_workbook('mall.xlsx')
 
-while i < numDagar:
-    dagar = [['J','K','O','P'],['R', 'S','W','X','Z','AA'],['AC', 'AD','AH','AI','AK','AL'],['AN', 'AO','AS','AT','AV','AW'],['AY', 'AZ','BD','BE']]
-    for x in dagar:
-        setRowValues(x)
-        rowMall +=1
-    #Lördag och Söndag
-    rowMall +=2
+    sheet_names = [sheet for sheet in schema.sheetnames if schema[sheet].sheet_state == 'visible']
 
-    rowSchema +=1
-    i+=7
+    tabName = setAvd(sheet_names)
+    schemaTab = schema[tabName]
+    namn = setKollega(schemaTab)
+    startdatum = input('Periodens start datum (xxxx-xx-xx): ')
+    numVeckor = input('Hur många veckor i perioden: ')
+    rast = input('Hur lång rast (Minuter): ')
+    numDagar = int(numVeckor)*7
+    mallTab = mall['Schema mall']
 
-mallTab['C8'] = int(numVeckor)
-mallTab['B12'] = startdatum
+    startPosSchema = ''
 
-print('Tider inlagd!')
+    for x in range(1,200):
+        cell = 'B'+str(x)
+        val = schemaTab[cell].value
+        if val == namn:
+            startPosSchema = str(x)
+            break
+
+    mallTab['C8'] = int(numVeckor)
+
+    i = 0
+    rowSchema = int(startPosSchema)
+    rowMall = 14
+
+    while i < numDagar:
+        dagar = [['J','K','O','P'],['R', 'S','W','X','Z','AA'],['AC', 'AD','AH','AI','AK','AL'],['AN', 'AO','AS','AT','AV','AW'],['AY', 'AZ','BD','BE']]
+        for x in dagar:
+            setRowValues(schemaTab, rowSchema, mallTab, rowMall, rast, x)
+            rowMall +=1
+        #Lördag och Söndag
+        rowMall +=2
+
+        rowSchema +=1
+        i+=7
+
+    mallTab['C8'] = int(numVeckor)
+    mallTab['B12'] = startdatum
+
+    print('Tider inlagd!')
+
+    fulltNamn = input('Ange kollegans förnamn och efternamn: ')
+    personnummer = input('Ange kollegans personnummer: ')
+
+    mallTab['C4'] = fulltNamn
+    mallTab['C5'] = personnummer
+
+    newFile = fulltNamn+'.xlsx'
+
+    mall.save(newFile)
+
+    print('Klar!!!')
 
 
-
-fulltNamn = input('Ange kollegans förnamn och efternamn: ')
-personnummer = input('Ange kollegans personnummer: ')
-
-mallTab['C4'] = fulltNamn
-mallTab['C5'] = personnummer
-
-newFile = fulltNamn+'.xlsx'
-
-mall.save(newFile)
-
-print('Klar!!!')
-
+main()
